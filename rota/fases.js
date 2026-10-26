@@ -73,6 +73,35 @@ var FASES_PROGRAMACAO = {
   ],
 };
 
+// Fases do Modo Áudio: tabuleiros pequenos (3x3 no início, no máximo 4x4),
+// para a criança imaginar o caminho ouvindo a descrição.
+var FASES_AUDIO = {
+  1: [
+    { destino: 'padaria', mapa: ['...', 'C.D', '...'] },
+    { destino: 'escola', mapa: ['D..', '...', 'C..'] },
+    { destino: 'praca', mapa: ['...', 'COD', '...'] },
+    { destino: 'biblioteca', mapa: ['K..', 'C..', '..D'] },
+    { destino: 'mercado', mapa: ['C...', 'OO..', '....', 'D...'] },
+    { destino: 'casa', mapa: ['...D', '.K..', '.K..', 'C...'] },
+  ],
+  2: [
+    { destino: 'escola', mapa: ['....', 'C..D', '....', '....'] },
+    { destino: 'padaria', mapa: ['C...', '....', '....', '...D'] },
+    { destino: 'praca', mapa: ['D...', '...K', '...K', '...C'] },
+    { destino: 'biblioteca', mapa: ['C...', 'KKK.', 'D...', '....'] },
+    { destino: 'mercado', mapa: ['C..K', 'OO..', '....', 'D...'] },
+    { destino: 'parque', mapa: ['...C', '.OOO', '....', 'D...'] },
+  ],
+  3: [
+    { destino: 'padaria', mapa: ['XXXX', 'C.SD', 'XXXX'] },
+    { destino: 'escola', mapa: ['XXXX', 'D.SC', 'XXXX'] },
+    { destino: 'praca', mapa: ['C.XX', 'X.XX', 'X.S.', 'XXXD'] },
+    { destino: 'biblioteca', mapa: ['C..X', 'XXSX', 'X..D', 'XXXX'] },
+    { destino: 'mercado', mapa: ['C...', 'XXXS', 'D...', 'XXXX'] },
+    { destino: 'hospital', mapa: ['C.S.', 'XXX.', 'D.S.', 'XXXX'] },
+  ],
+};
+
 var DIRECOES = {
   cima: { dx: 0, dy: -1, seta: '⬆️', nome: 'cima', angulo: -90 },
   baixo: { dx: 0, dy: 1, seta: '⬇️', nome: 'baixo', angulo: 90 },
@@ -143,5 +172,5 @@ function blocosIdeais(mapa, regras) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { DESTINOS: DESTINOS, REGRAS_PROGRAMACAO: REGRAS_PROGRAMACAO, FASES_PROGRAMACAO: FASES_PROGRAMACAO, DIRECOES: DIRECOES, MAX_REPETIR: MAX_REPETIR, lerMapa: lerMapa, blocosIdeais: blocosIdeais, bloqueada: bloqueada };
+  module.exports = { FASES_AUDIO: FASES_AUDIO, DESTINOS: DESTINOS, REGRAS_PROGRAMACAO: REGRAS_PROGRAMACAO, FASES_PROGRAMACAO: FASES_PROGRAMACAO, DIRECOES: DIRECOES, MAX_REPETIR: MAX_REPETIR, lerMapa: lerMapa, blocosIdeais: blocosIdeais, bloqueada: bloqueada };
 }

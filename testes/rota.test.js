@@ -3,7 +3,7 @@
 // Uso: node testes/rota.test.js
 const assert = require('assert');
 const F = require('../rota/fases.js');
-const { ICONES } = require('../rota/icones.js');
+const { ICONES, DESCRICOES } = require('../rota/icones.js');
 const { TICS, CIDADANIA, ITENS_POR_MISSAO } = require('../perguntas.js');
 
 let total = 0;
@@ -33,6 +33,27 @@ for (const ano of [1, 2, 3]) {
     total++;
   });
 }
+
+// ---------- Programação no Modo Áudio: tabuleiros de 3x3 até 4x4 ----------
+for (const ano of [1, 2, 3]) {
+  const regras = F.REGRAS_PROGRAMACAO[ano];
+  F.FASES_AUDIO[ano].forEach((fase, i) => {
+    const nome = `Modo Áudio ${ano}º ano, missão ${i + 1}`;
+    const mapa = F.lerMapa(fase);
+    assert(mapa.colunas >= 3 && mapa.colunas <= 4 && mapa.linhas >= 3 && mapa.linhas <= 4, `${nome}: use de 3x3 a 4x4`);
+    assert(fase.mapa.every((l) => l.length === mapa.colunas && /^[.CDOKXS]+$/.test(l)), `${nome}: desenho com erro`);
+    assert(mapa.inicio && mapa.destino && F.DESTINOS[fase.destino], `${nome}: falta C, D ou destino`);
+    if (!regras.espere) assert(!mapa.semaforos.length, `${nome}: semáforo só no 3º ano`);
+    assert(F.blocosIdeais(mapa, regras), `${nome}: não tem solução`);
+    if (mapa.semaforos.length) {
+      const sem = F.lerMapa({ mapa: fase.mapa.map((l) => l.replace(/S/g, 'X')) });
+      assert.strictEqual(F.blocosIdeais(sem, regras), null, `${nome}: dá para desviar do semáforo`);
+    }
+    total++;
+  });
+}
+// Todo desenho tem uma descrição falada.
+Object.keys(ICONES).forEach((nome) => assert(DESCRICOES[nome], `o desenho "${nome}" não tem descrição em DESCRICOES`));
 
 // ---------- Perguntas ----------
 function conferirImagem(img, onde) {

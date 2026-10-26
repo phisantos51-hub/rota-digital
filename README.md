@@ -19,6 +19,14 @@ Cada missão vale até ⭐⭐⭐. Terminando as missões de um bairro, a crianç
 - **Área do professor** (botão discreto 🔑, protegido por uma conta de somar): liberar todas as fases e apagar o progresso (com confirmação). O progresso fica salvo só no navegador daquele computador.
 - Atalhos opcionais: setas do teclado, R (REPETIR), E (ESPERE), Enter (Executar), Delete (tirar bloco), 1/2/3 (respostas), P (pausa), H (como jogar).
 
+### Acessibilidade
+
+O botão **♿ Acessibilidade** fica na tela inicial e também na Área do professor. As escolhas ficam salvas no navegador daquele computador.
+
+- **🎧 Modo Áudio** (estudante cego, com teclado e fones): o jogo fala sozinho em português e funciona só pelo teclado: setas para escolher, Enter para confirmar, Esc para voltar, barra de espaço para ouvir de novo e H para a ajuda falada. No lugar do mapa há um menu falado com os bairros e os selos. Na Programação, os tabuleiros são menores (3x3 até 4x4), o jogo descreve o caminho antes da missão, a tecla L diz onde o carro está, e cada passo tem um som: à direita e à esquerda pelo fone, mais agudo para cima e mais grave para baixo. No 3º ano, a cor do semáforo é avisada por voz e por som. Funciona também com o NVDA e o Narrador; nesse caso, desligue a **voz do próprio jogo** para não ouvir duas vozes.
+- **🌿 Modo Calmo** (estudantes com TEA): tela mais limpa, cores suaves, sem piscar nem tremer, uma barra mostrando a missão atual e quantas faltam, instruções em passos numerados, erros mostrados de forma neutra e a mesma recompensa ao fim de cada missão. Na Cidadania Digital, sem rostos assustados e com o lembrete "peça ajuda a um adulto". Opção extra: **desligar todas as animações** (o carro pula de casa em casa).
+- **🔠 Letras e botões maiores** e **🌓 Alto contraste**, para qualquer estudante.
+
 ### Como acrescentar perguntas e situações
 
 As perguntas do Bairro das TICs e as situações do Bairro da Cidadania Digital ficam no arquivo [`perguntas.js`](perguntas.js), na raiz. O começo do arquivo explica, com modelos prontos, como copiar e colar uma pergunta nova. A cada 3 perguntas novas de um ano, aparece uma missão nova. As fases da Programação ficam em [`rota/fases.js`](rota/fases.js), desenhadas com letras.
@@ -32,7 +40,8 @@ index.html            Rota Digital (página principal)
 perguntas.js          perguntas das TICs e situações da Cidadania Digital
 rota/fases.js         fases da Programação
 rota/icones.js        desenhos (aparelhos, ícones, mídias, carro, semáforo)
-rota/jogo.js          telas, mapa, missões, estrelas, selos e progresso
+rota/jogo.js          telas, mapa, missões, estrelas, selos, progresso e acessibilidade
+rota/audio.js         Modo Áudio (voz, sons e teclado)
 rota/estilo.css       visual
 testes/rota.test.js   confere fases e perguntas
 ```

@@ -50,6 +50,26 @@
   };
   let progresso = carregarProgresso();
 
+  // Acessibilidade: escolhas salvas só neste navegador.
+  const CHAVE_ACESS = 'rotaDigital.acessibilidade.v1';
+  const ACESS_PADRAO = { audio: false, vozPropria: true, calmo: false, semAnimacao: false, grande: false, contraste: false };
+  const acess = carregarAcess();
+  let modoAudio = null; // criado no fim do arquivo (rota/audio.js)
+
+  function carregarAcess() {
+    const a = Object.assign({}, ACESS_PADRAO);
+    try {
+      const v = JSON.parse(localStorage.getItem(CHAVE_ACESS));
+      if (v && typeof v === 'object') Object.keys(ACESS_PADRAO).forEach((k) => { if (typeof v[k] === 'boolean') a[k] = v[k]; });
+    } catch (e) { /* armazenamento indisponível */ }
+    return a;
+  }
+  function salvarAcess() {
+    try { localStorage.setItem(CHAVE_ACESS, JSON.stringify(acess)); } catch (e) { /* ignora */ }
+  }
+  // Texto normal ou texto do Modo Calmo (mais direto, sem exclamações).
+  function txt(normal, calmo) { return acess.calmo ? calmo : normal; }
+
   // =================================================================
   // Progresso (salvo só neste navegador; o nome NÃO é salvo)
   // =================================================================
@@ -63,13 +83,18 @@
   function salvarProgresso() {
     try { localStorage.setItem(CHAVE_PROGRESSO, JSON.stringify(progresso)); } catch (e) { /* ignora */ }
   }
+  // No Modo Áudio as fases da Programação são outras (tabuleiros menores),
+  // por isso as estrelas delas ficam guardadas à parte.
+  function chaveBairro(bairro) { return bairro === 'prog' && acess.audio ? 'progAudio' : bairro; }
   function estrelasDe(bairro, i) {
     const a = progresso.anos[estado.ano];
-    return (a && a[bairro] && a[bairro][i]) || 0;
+    const k = chaveBairro(bairro);
+    return (a && a[k] && a[k][i]) || 0;
   }
   function registrarEstrelas(bairro, i, n) {
     const a = progresso.anos[estado.ano] || (progresso.anos[estado.ano] = {});
-    const lista = a[bairro] || (a[bairro] = []);
+    const k = chaveBairro(bairro);
+    const lista = a[k] || (a[k] = []);
     lista[i] = Math.max(lista[i] || 0, n);
     salvarProgresso();
   }
@@ -78,7 +103,7 @@
     return (fonte && fonte[estado.ano]) || [];
   }
   function totalMissoes(bairro) {
-    if (bairro === 'prog') return FASES_PROGRAMACAO[estado.ano].length;
+    if (bairro === 'prog') return (acess.audio ? FASES_AUDIO : FASES_PROGRAMACAO)[estado.ano].length;
     return Math.ceil(listaPerguntas(bairro).length / ITENS_POR_MISSAO);
   }
   function itensDaMissao(bairro, i) {
@@ -92,6 +117,13 @@
     return true;
   }
   function todosSelos() { return ORDEM_BAIRROS.every(temSelo); }
+  // Guarda as estrelas e diz se a missão trouxe um selo novo e se a Praça abriu.
+  function registrarConclusao(bairro, i, estrelas) {
+    const tinhaSelo = temSelo(bairro);
+    registrarEstrelas(bairro, i, estrelas);
+    const novoSelo = !tinhaSelo && temSelo(bairro);
+    return { novoSelo: novoSelo, praca: novoSelo && todosSelos() };
+  }
   function somaEstrelas(bairro) {
     let s = 0;
     for (let i = 0; i < totalMissoes(bairro); i++) s += estrelasDe(bairro, i);
@@ -114,6 +146,8 @@
     });
   }
   function animar(ms, cada) {
+    if (acess.semAnimacao) { cada(1); return esperar(Math.min(ms, 250)); }
+    if (acess.calmo) ms *= 1.4;
     return new Promise((resolver) => {
       let t = 0;
       let ultimo = performance.now();
@@ -153,14 +187,18 @@
     try {
       audio = audio || new (window.AudioContext || window.webkitAudioContext)();
       const notas = { ok: [523, 784], erro: [220, 175], passo: [660], vitoria: [523, 659, 784, 1047], clique: [880] }[tipo] || [440];
-      const dur = tipo === 'passo' || tipo === 'clique' ? .06 : .14;
+      const calmo = acess.calmo;
+      if (calmo && tipo === 'erro') notas.splice(0, notas.length, 392, 349);
+      if (calmo && tipo === 'vitoria') notas.splice(0, notas.length, 523, 659);
+      const dur = (tipo === 'passo' || tipo === 'clique' ? .06 : .14) * (calmo ? 1.6 : 1);
       notas.forEach((f, i) => {
         const o = audio.createOscillator();
         const g = audio.createGain();
-        o.type = tipo === 'erro' ? 'square' : 'triangle';
+        o.type = tipo === 'erro' && !calmo ? 'square' : calmo ? 'sine' : 'triangle';
         o.frequency.value = f;
         const t0 = audio.currentTime + i * dur;
-        g.gain.setValueAtTime(.12, t0);
+        g.gain.setValueAtTime(.0001, t0);
+        g.gain.linearRampToValueAtTime(calmo ? .05 : .12, t0 + .01);
         g.gain.exponentialRampToValueAtTime(.001, t0 + dur * .95);
         o.connect(g).connect(audio.destination);
         o.start(t0); o.stop(t0 + dur);
@@ -169,6 +207,7 @@
   }
 
   function soltarConfete() {
+    if (acess.calmo || acess.semAnimacao) return;
     const caixa = $('#confete');
     const cores = ['#e53935', '#1e88e5', '#fdd835', '#43a047', '#8e24aa', '#fb8c00'];
     for (let i = 0; i < 70; i++) {
@@ -189,6 +228,7 @@
     $$('.tela').forEach((t) => t.classList.toggle('ativa', t.id === 'tela-' + nome));
     estado.tela = nome;
     atualizarBarra();
+    atualizarTrilha();
     window.scrollTo(0, 0);
   }
   function atualizarBarra() {
@@ -202,12 +242,33 @@
       prog: ['🏘️ Missões', b ? b.icone + ' ' + b.curto + ' · Missão ' + (estado.missao + 1) : ''],
       quiz: ['🏘️ Missões', b ? b.icone + ' ' + b.curto + ' · Missão ' + (estado.missao + 1) : ''],
       praca: ['🗺️ Mapa', '⛲ Praça Digital'],
+      audio: [null, '🎧 Rota Digital · Modo Áudio'],
     }[estado.tela];
     voltar.hidden = !textos[0];
     voltar.textContent = textos[0] || '';
     $('#titulo-barra').textContent = textos[1];
     $('#carro-barra').innerHTML = estado.ano ? desenhoCarro(estado.cor) : '';
   }
+  // Barra do Modo Calmo: em que missão o estudante está e quantas faltam.
+  function atualizarTrilha() {
+    const t = $('#trilha');
+    const mostrar = acess.calmo && !acess.audio && estado.bairro && ['bairro', 'prog', 'quiz'].includes(estado.tela);
+    t.hidden = !mostrar;
+    if (!mostrar) return;
+    const total = totalMissoes(estado.bairro);
+    let feitas = 0;
+    for (let i = 0; i < total; i++) if (estrelasDe(estado.bairro, i)) feitas++;
+    let pontos = '';
+    for (let i = 0; i < total; i++) {
+      const agora = estado.tela !== 'bairro' && i === estado.missao;
+      pontos += '<span class="ponto' + (estrelasDe(estado.bairro, i) ? ' feito' : '') + (agora ? ' agora' : '') + '" aria-hidden="true">' + (i + 1) + '</span>';
+    }
+    const texto = estado.tela === 'bairro'
+      ? 'Missões feitas: ' + feitas + ' de ' + total + '. Faltam ' + (total - feitas) + '.'
+      : 'Você está na missão ' + (estado.missao + 1) + ' de ' + total + '. Depois desta, faltam ' + Math.max(0, total - estado.missao - 1) + '.';
+    t.innerHTML = '<span class="trilha-texto">' + BAIRROS[estado.bairro].icone + ' ' + texto + '</span><span class="trilha-pontos">' + pontos + '</span>';
+  }
+
   function voltar() {
     pararMissao();
     if (estado.tela === 'mapa') mostrarInicio();
@@ -247,7 +308,8 @@
   }
   function escolherAno(n) {
     estado.ano = n;
-    document.body.className = 'ano-' + n;
+    document.body.classList.remove('ano-1', 'ano-2', 'ano-3');
+    document.body.classList.add('ano-' + n);
     $$('.ano-btn').forEach((x) => x.setAttribute('aria-pressed', String(Number(x.dataset.ano) === n)));
     tocar('clique');
   }
@@ -395,21 +457,27 @@
   function terminarMissao(estrelas, detalhe) {
     const bairro = estado.bairro;
     const i = estado.missao;
-    const tinhaSelo = temSelo(bairro);
-    registrarEstrelas(bairro, i, estrelas);
-    const novoSelo = !tinhaSelo && temSelo(bairro);
-    const praca = novoSelo && todosSelos();
+    if (acess.calmo) estrelas = 3; // recompensa sempre igual
+    const r = registrarConclusao(bairro, i, estrelas);
+    const novoSelo = r.novoSelo;
+    const praca = r.praca;
     tocar('vitoria');
     soltarConfete();
     const frases = { 3: 'Perfeito!', 2: 'Muito bem!', 1: 'Você conseguiu!' };
-    let html = '<div class="icone-grande" aria-hidden="true">🏁</div><h2>Missão cumprida! ' + frases[estrelas] + '</h2>' +
-      '<div class="estrelas-grandes" aria-label="' + estrelas + ' estrelas">' + estrelasHtml(estrelas) + '</div>';
-    if (detalhe) html += detalhe;
-    if (estrelas < 3) html += '<p>Jogue de novo quando quiser para ganhar mais estrelas.</p>';
+    let html;
+    if (acess.calmo) {
+      html = '<div class="icone-grande" aria-hidden="true">✅</div><h2>Missão terminada.</h2>' +
+        '<div class="estrelas-grandes" aria-label="3 estrelas">' + estrelasHtml(3) + '</div><p>Você terminou a missão ' + (i + 1) + '.</p>';
+    } else {
+      html = '<div class="icone-grande" aria-hidden="true">🏁</div><h2>Missão cumprida! ' + frases[estrelas] + '</h2>' +
+        '<div class="estrelas-grandes" aria-label="' + estrelas + ' estrelas">' + estrelasHtml(estrelas) + '</div>';
+      if (detalhe) html += detalhe;
+      if (estrelas < 3) html += '<p>Jogue de novo quando quiser para ganhar mais estrelas.</p>';
+    }
     if (novoSelo) {
       html += '<div class="selo-ganho">' + seloHtml(bairro, true) + '<span>Você ganhou o selo do ' + BAIRROS[bairro].nome + '!</span></div>';
     }
-    if (praca) html += '<div class="selo-ganho">🎉 Você tem os 3 selos! A Praça Digital está aberta!</div>';
+    if (praca) html += '<div class="selo-ganho">' + txt('🎉 Você tem os 3 selos! A Praça Digital está aberta!', 'Você tem os 3 selos. A Praça Digital está aberta.') + '</div>';
     $('#resultado-conteudo').innerHTML = html;
     const acoes = $('#resultado-acoes');
     acoes.innerHTML = '';
@@ -834,11 +902,16 @@
     marcarRodando([]);
     P.cursor = indice + 1;
     desenharPrograma(indice);
-    mensagem('<b>⚠️ Quase!</b> ' + texto + '<br>🔧 O bloco com problema está em vermelho. Conserte e clique em ▶️ Executar de novo.', 'erro');
+    if (acess.calmo) {
+      mensagem('<b>Vamos tentar de novo.</b> ' + texto.replace(/^Ops! /, '').replace(/^✋ Pare! /, '') +
+        '<br>👉 O bloco com problema está marcado. Troque o bloco e clique em ▶️ Executar.', 'erro');
+    } else {
+      mensagem('<b>⚠️ Quase!</b> ' + texto + '<br>🔧 O bloco com problema está em vermelho. Conserte e clique em ▶️ Executar de novo.', 'erro');
+    }
     $('#prog-mensagem').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
   function vencerProgramacao() {
-    mensagem('🎉 Chegou! O carro está na ' + P.destino.nome + '!', 'ok');
+    mensagem(txt('🎉 Chegou! O carro está na ' + P.destino.nome + '!', 'O carro chegou: ' + P.destino.nome + '.'), 'ok');
     let estrelas;
     let detalhe = '';
     const n = P.programa.length;
@@ -879,7 +952,7 @@
     const e = $('#estrada');
     let html = '';
     Q.itens.forEach((item, k) => {
-      const fig = Q.bairro === 'tic' ? '📦' : '<span class="selo" style="width:46px;height:46px;font-size:1.5rem;border-radius:10px;background:#ffd54f">' + (item.placa || '⚠️') + '</span>';
+      const fig = Q.bairro === 'tic' ? '📦' : '<span class="selo placa-mini">' + (acess.calmo ? '🛡️' : (item.placa || '⚠️')) + '</span>';
       html += '<div class="marco" id="marco-' + k + '" style="left:' + posMarco(k) + '%">' + fig + '<small>' + (k + 1) + '</small></div>';
     });
     html += '<div class="fim" aria-hidden="true">' + (Q.bairro === 'tic' ? '🏪' : '🏁') + '</div>';
@@ -905,10 +978,14 @@
     const item = Q.itens[k];
     const cartao = $('#cartao');
     cartao.className = 'cartao ' + (Q.bairro === 'tic' ? 'placa-tic' : 'placa-cid');
-    const placaPadrao = Q.bairro === 'tic' ? '📦' : '⚠️';
+    const placaPadrao = Q.bairro === 'tic' ? '📦' : '🛡️';
     const rotulo = (Q.bairro === 'tic' ? 'Entrega ' : 'Placa ') + (k + 1) + ' de ' + Q.itens.length;
-    let html = '<div class="pergunta"><span class="p-placa" aria-hidden="true">' + escapar(item.placa || placaPadrao) + '</span>' +
+    const placa = acess.calmo && Q.bairro === 'cid' ? placaPadrao : (item.placa || placaPadrao);
+    let html = '<div class="pergunta"><span class="p-placa" aria-hidden="true">' + escapar(placa) + '</span>' +
       '<span><span class="p-numero">' + rotulo + '</span>' + escapar(item.pergunta) + '</span></div>';
+    if (acess.calmo && Q.bairro === 'cid') {
+      html += '<p class="lembrete-adulto">🙋 Lembre: quando tiver dúvida ou medo, peça ajuda a um adulto.</p>';
+    }
     if (item.tipo === 'arrastar') html += htmlArrastar(item);
     else html += htmlEscolha(item);
     cartao.innerHTML = html;
@@ -921,7 +998,13 @@
   function htmlEscolha(item) {
     return '<div class="opcoes">' + item.opcoes.map((o, i) =>
       '<button class="btn opcao" data-i="' + i + '"><span class="o-tecla">' + (i + 1) + '</span>' +
-      '<span class="o-img">' + icone(o.img) + '</span><span>' + escapar(o.texto) + '</span></button>').join('') + '</div>';
+      '<span class="o-img">' + icone(imagemCalma(o.img)) + '</span><span>' + escapar(o.texto) + '</span></button>').join('') + '</div>';
+  }
+  // No Modo Calmo, a Cidadania Digital não mostra rostos bravos, tristes ou assustados.
+  const IMAGENS_FORTES = ['😨', '😢', '😤', '😡', '🤬', '😠', '😝', '😂', '🙈', '🙊', '👎', '⚠️', '🛑'];
+  function imagemCalma(img) {
+    if (!acess.calmo || Q.bairro !== 'cid') return img;
+    return IMAGENS_FORTES.includes(img) ? '💬' : img;
   }
   function ligarEscolha(item) {
     $$('#cartao .opcao').forEach((b) => b.addEventListener('click', () => escolherOpcao(item, Number(b.dataset.i))));
@@ -950,14 +1033,14 @@
     const ultimo = Q.atual + 1 >= Q.itens.length;
     if (certo) {
       r.className = 'retorno ok';
-      r.innerHTML = '<span class="r-icone" aria-hidden="true">🎉</span><div class="r-texto"><b>Muito bem!</b>' + escapar(texto || '') + '</div>' +
+      r.innerHTML = '<span class="r-icone" aria-hidden="true">' + txt('🎉', '✅') + '</span><div class="r-texto"><b>' + txt('Muito bem!', 'Resposta certa.') + '</b>' + escapar(texto || '') + '</div>' +
         '<button id="btn-continuar-quiz" class="btn grande verde">' + (ultimo ? '🏁 Terminar' : '➡️ Continuar') + '</button>';
       r.querySelector('button').addEventListener('click', () => {
         if (ultimo) terminarQuiz(); else mostrarItem(Q.atual + 1);
       });
     } else {
       r.className = 'retorno tenta';
-      r.innerHTML = '<span class="r-icone" aria-hidden="true">🤔</span><div class="r-texto"><b>Vamos pensar juntos!</b>' + escapar(texto) + '</div>';
+      r.innerHTML = '<span class="r-icone" aria-hidden="true">' + txt('🤔', '🔁') + '</span><div class="r-texto"><b>' + txt('Vamos pensar juntos!', 'Vamos tentar de novo.') + '</b>' + escapar(texto) + '</div>';
     }
     r.hidden = false;
     r.animate([{ transform: 'scale(.96)' }, { transform: 'scale(1)' }], { duration: 200 });
@@ -982,7 +1065,8 @@
     return '<p class="dica-arrastar">👆 Clique num item e depois clique na caixa certa. Se preferir, arraste com o mouse.</p>' +
       '<div class="arrastar-itens">' + ordem.map((i) => {
         const it = item.itens[i];
-        return '<button class="btn item" data-i="' + i + '"><span class="o-img">' + icone(it.img) + '</span><span>' + escapar(it.texto || '') + '</span></button>';
+        const nome = it.texto || descricaoImg(it.img);
+        return '<button class="btn item" data-i="' + i + '" aria-label="' + escapar(nome) + '"><span class="o-img">' + icone(it.img) + '</span><span>' + escapar(it.texto || '') + '</span></button>';
       }).join('') + '</div>' +
       '<div class="lugares">' + item.lugares.map((l) =>
         '<button class="btn lugar" data-lugar="' + escapar(l.id) + '"><span class="l-cabeca">' +
@@ -1137,7 +1221,10 @@
     const b = m.querySelector('.btn');
     if (b) b.focus({ preventScroll: true });
   }
-  function fecharModal(id) { $('#' + id).hidden = true; }
+  function fecharModal(id) {
+    $('#' + id).hidden = true;
+    if (modoAudio && acess.audio && !modalAberto()) modoAudio.focar();
+  }
   function modalAberto() { return $$('.modal').find((m) => !m.hidden); }
 
   function mostrarAviso(icone, titulo, texto, extra) {
@@ -1183,6 +1270,14 @@
         ],
       },
       {
+        id: 'acess', titulo: '♿ Acessibilidade', itens: [
+          ['♿', 'O botão Acessibilidade fica na tela inicial e na Área do professor.'],
+          ['🎧', 'Modo Áudio: o jogo fala e funciona só pelo teclado.'],
+          ['🌿', 'Modo Calmo: tela mais limpa e tranquila.'],
+          ['🔠 🌓', 'Letras maiores e alto contraste.'],
+        ],
+      },
+      {
         id: 'teclado', titulo: '⌨️ Teclado (se quiser)', itens: [
           ['⬅️⬆️⬇️➡️', 'Setas do teclado põem blocos de seta.'],
           ['R  E', 'R põe REPETIR. E põe SE VERMELHO, ESPERE.'],
@@ -1204,6 +1299,8 @@
   }
 
   function pausar() {
+    $('#titulo-pausa').textContent = txt('Jogo pausado', 'Pausa');
+    $('#texto-pausa').textContent = txt('O carrinho está esperando você.', 'Respire devagar. Quando quiser voltar, clique em Continuar.');
     estado.pausado = true;
     document.body.classList.add('pausado');
     abrirModal('modal-pausa');
@@ -1212,6 +1309,7 @@
     estado.pausado = false;
     document.body.classList.remove('pausado');
     fecharModal('modal-pausa');
+    if (modoAudio && acess.audio) modoAudio.aoContinuar();
   }
 
   let contaProfessor = 0;
@@ -1263,7 +1361,8 @@
       b.textContent = estado.som ? '🔊 Som ligado' : '🔇 Som desligado';
       tocar('ok');
     });
-    $$('[data-fechar]').forEach((b) => b.addEventListener('click', () => { b.closest('.modal').hidden = true; }));
+    $$('[data-fechar]').forEach((b) => b.addEventListener('click', () => fecharModal(b.closest('.modal').id)));
+    $$('[data-abrir-acess]').forEach((b) => b.addEventListener('click', abrirAcess));
     $$('[data-bairro]').forEach((b) => b.addEventListener('click', () => clicarNoMapa(b.dataset.bairro)));
 
     $('#btn-executar').addEventListener('click', executar);
@@ -1305,9 +1404,10 @@
   function teclado(e) {
     if (e.target.matches('input, textarea')) return;
     const aberto = modalAberto();
+    if (!aberto && acess.audio && modoAudio) { modoAudio.tecla(e); return; }
     if (e.key === 'Escape') {
       if (!aberto) return;
-      if (aberto.id === 'modal-pausa') continuar(); else aberto.hidden = true;
+      if (aberto.id === 'modal-pausa') continuar(); else fecharModal(aberto.id);
       return;
     }
     if (aberto) return;
@@ -1333,8 +1433,83 @@
     }
   }
 
-  // Pausa automática quando a janela perde o foco não é necessária: o jogo não tem tempo-limite.
+  // =================================================================
+  // Painel de Acessibilidade (tela inicial e Área do professor)
+  // =================================================================
+  const OPCOES_ACESS = [
+    { id: 'audio', icone: '🎧', titulo: 'Modo Áudio', desc: 'Para estudante cego: o jogo fala, usa sons e funciona só pelo teclado (setas, Enter, Esc, espaço e H).' },
+    { id: 'vozPropria', icone: '🗣️', titulo: 'Voz do próprio jogo', desc: 'Deixe ligada sem leitor de tela. Desligue se o computador usa NVDA ou Narrador, para não ouvir duas vozes.', sub: true },
+    { id: 'calmo', icone: '🌿', titulo: 'Modo Calmo', desc: 'Tela mais limpa, cores suaves, sem piscar, instruções em passos e erros sem vermelho.' },
+    { id: 'semAnimacao', icone: '⏹️', titulo: 'Desligar todas as animações', desc: 'O carro pula de uma casa para a outra, sem deslizar.', sub: true },
+    { id: 'grande', icone: '🔠', titulo: 'Letras e botões maiores', desc: 'Aumenta o tamanho de tudo na tela.' },
+    { id: 'contraste', icone: '🌓', titulo: 'Alto contraste', desc: 'Fundo preto, letras brancas e amarelas.' },
+  ];
+  function montarAcess() {
+    const lista = $('#lista-acess');
+    lista.innerHTML = '';
+    OPCOES_ACESS.forEach((o) => {
+      const b = document.createElement('button');
+      b.className = 'btn opcao-acess' + (o.sub ? ' sub' : '');
+      b.setAttribute('role', 'switch');
+      b.setAttribute('aria-checked', String(acess[o.id]));
+      b.dataset.id = o.id;
+      b.innerHTML = '<span class="ac-icone" aria-hidden="true">' + o.icone + '</span>' +
+        '<span class="ac-texto"><b>' + o.titulo + '</b><small>' + o.desc + '</small></span>' +
+        '<span class="ac-estado">' + (acess[o.id] ? '✔ Ligado' : 'Desligado') + '</span>';
+      b.addEventListener('click', () => trocarAcess(o.id));
+      lista.appendChild(b);
+    });
+  }
+  function abrirAcess() {
+    montarAcess();
+    abrirModal('modal-acess');
+  }
+  function trocarAcess(id) {
+    acess[id] = !acess[id];
+    salvarAcess();
+    aplicarAcess();
+    montarAcess();
+    const botao = $('#lista-acess [data-id="' + id + '"]');
+    if (botao) botao.focus();
+    if (id === 'audio') {
+      fecharModal('modal-acess');
+      fecharModal('modal-professor');
+      if (acess.audio) modoAudio.iniciar(); else { modoAudio.parar(); mostrarInicio(); }
+    } else if (id === 'vozPropria' && acess.audio) {
+      modoAudio.falar(acess.vozPropria ? 'A voz do jogo está ligada.' : 'A voz do jogo está desligada.');
+    }
+  }
+  // Põe na página as classes de cada ajuste (o visual muda pelo CSS).
+  function aplicarAcess() {
+    const c = document.body.classList;
+    c.toggle('modo-audio', acess.audio);
+    c.toggle('calmo', acess.calmo);
+    c.toggle('sem-animacao', acess.semAnimacao);
+    c.toggle('grande', acess.grande);
+    document.documentElement.classList.toggle('grande', acess.grande);
+    c.toggle('contraste', acess.contraste);
+    atualizarTrilha();
+  }
+  function imprimirCertificado() {
+    const tela = estado.tela;
+    desenharCertificado();
+    mostrarTela('praca');
+    window.print();
+    mostrarTela(tela);
+  }
+
   montarInicio();
   ligarEventos();
+  aplicarAcess();
   atualizarBarra();
+
+  // O Modo Áudio (rota/audio.js) usa estas funções do jogo.
+  modoAudio = criarModoAudio({
+    estado: estado, acess: acess, ANOS: ANOS, BAIRROS: BAIRROS, ORDEM_BAIRROS: ORDEM_BAIRROS,
+    estrelasDe: estrelasDe, totalMissoes: totalMissoes, itensDaMissao: itensDaMissao, liberada: liberada,
+    temSelo: temSelo, todosSelos: todosSelos, registrarConclusao: registrarConclusao,
+    escolherAno: escolherAno, mostrarTela: mostrarTela, pausar: pausar, abrirAcess: abrirAcess,
+    trocarAcess: trocarAcess, imprimirCertificado: imprimirCertificado, OPCOES_ACESS: OPCOES_ACESS,
+  });
+  if (acess.audio) modoAudio.iniciar();
 })();

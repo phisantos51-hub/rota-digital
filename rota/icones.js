@@ -42,6 +42,36 @@ var ICONES = {
 };
 ICONES.imprimir = ICONES.impressora;
 
+// Descrição de cada desenho, usada pela voz do Modo Áudio e pelos leitores de tela.
+var DESCRICOES = {
+  computador: 'um computador de mesa, com tela grande',
+  notebook: 'um notebook: um computador que abre e fecha, para levar',
+  tablet: 'um tablet: uma tela grande que a gente toca com o dedo',
+  celular: 'um celular: pequeno, cabe no bolso, serve para ligar e mandar mensagens',
+  mouse: 'um mouse: cabe na mão e serve para apontar e clicar',
+  teclado: 'um teclado: tem letras e números, serve para escrever',
+  fone: 'um fone de ouvido: leva o som só para os seus ouvidos',
+  impressora: 'uma impressora: põe no papel o que está na tela',
+  pendrive: 'um pen drive: é pequenininho e guarda arquivos',
+  salvar: 'ícone de disquete: serve para salvar',
+  imprimir: 'ícone de impressora: serve para imprimir',
+  apagar: 'ícone de lixeira: serve para apagar',
+  voltar: 'ícone de seta para trás: serve para voltar',
+  pesquisar: 'ícone de lupa: serve para pesquisar',
+  som: 'ícone de alto-falante: serve para mexer no som',
+  camera: 'ícone de câmera: serve para tirar fotos',
+  texto: 'texto: palavras escritas para ler',
+  foto: 'foto: uma imagem parada',
+  video: 'vídeo: imagens que se mexem, com som',
+  audio: 'áudio: só som, como uma música ou uma voz',
+  jogo: 'jogo: serve para jogar e se divertir',
+  email: 'e-mail: uma mensagem escrita que vai pela internet',
+  cone: 'um cone',
+  obra: 'uma obra',
+  predio: 'um prédio',
+};
+function descricaoImg(nome) { return DESCRICOES[nome] || ''; }
+
 // Desenho de um ícone pelo nome; se não houver desenho, mostra o texto como emoji.
 function icone(nome, classe) {
   var c = classe ? ' class="' + classe + '"' : '';
@@ -71,4 +101,4 @@ function desenhoSemaforo(vermelho) {
     '<circle cx="20" cy="47" r="9" fill="' + (vermelho ? '#1b3d1f' : '#00e676') + '"/></svg>';
 }
 
-if (typeof module !== 'undefined') module.exports = { ICONES: ICONES };
+if (typeof module !== 'undefined') module.exports = { ICONES: ICONES, DESCRICOES: DESCRICOES };

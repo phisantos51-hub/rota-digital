@@ -23,6 +23,24 @@
   </header>
 
   <main>
+    <!-- Modo Calmo: mostra em que missão o estudante está e quantas faltam -->
+    <div id="trilha" class="trilha" role="status" hidden></div>
+
+    <!-- ===== Modo Áudio: tudo pelo teclado, com voz e sons ===== -->
+    <section id="tela-audio" class="tela" aria-label="Rota Digital, modo áudio">
+      <div id="audio-app" class="audio-app" role="application" tabindex="0" aria-roledescription="jogo" aria-label="Rota Digital, modo áudio. Use as setas, Enter, Esc, espaço e H.">
+        <h2 id="audio-titulo"></h2>
+        <p id="audio-texto" class="audio-texto"></p>
+        <ul id="audio-opcoes" class="audio-opcoes" role="listbox" aria-label="Opções"></ul>
+        <div id="audio-extra" class="audio-extra"></div>
+        <p class="audio-teclas" aria-hidden="true">⬆️⬇️ escolher · Enter confirmar · Esc voltar · Espaço ouvir de novo · H ajuda</p>
+      </div>
+      <div id="audio-comecar" class="audio-comecar">
+        <div class="icone-grande" aria-hidden="true">🎧</div>
+        <p><b>Modo Áudio</b></p>
+        <p>Coloque os fones de ouvido e aperte <kbd>Enter</kbd> para começar.</p>
+      </div>
+    </section>
     <!-- ===== Tela inicial ===== -->
     <section id="tela-inicio" class="tela ativa">
       <div class="inicio-topo">
@@ -32,6 +50,8 @@
           <p class="lema">Dirija pela Cidade Digital, cumpra as missões e ganhe os 3 selos!</p>
         </div>
       </div>
+
+      <button class="btn azul btn-acess" data-abrir-acess>♿ Acessibilidade</button>
 
       <div class="inicio-caixa">
         <h3><span class="passo">1</span> ✏️ Escreva o seu nome</h3>
@@ -83,6 +103,11 @@
     <!-- ===== Missão de Programação ===== -->
     <section id="tela-prog" class="tela">
       <div id="prog-objetivo" class="objetivo"></div>
+      <ol class="passos-calmo" aria-label="Passos">
+        <li><span aria-hidden="true">➡️</span> Clique nas setas para montar o caminho.</li>
+        <li><span aria-hidden="true">▶️</span> Clique em Executar.</li>
+        <li><span aria-hidden="true">🏁</span> O carro anda até o destino.</li>
+      </ol>
       <div class="prog-area">
         <div class="prog-esquerda">
           <div id="tabuleiro" class="tabuleiro"></div>
@@ -109,6 +134,11 @@
     <!-- ===== Missão de perguntas (TICs e Cidadania) ===== -->
     <section id="tela-quiz" class="tela">
       <div id="estrada" class="estrada"></div>
+      <ol class="passos-calmo" aria-label="Passos">
+        <li><span aria-hidden="true">👀</span> Leia a pergunta.</li>
+        <li><span aria-hidden="true">👆</span> Clique na resposta.</li>
+        <li><span aria-hidden="true">➡️</span> Clique em Continuar.</li>
+      </ol>
       <div id="cartao" class="cartao"></div>
       <div id="retorno" class="retorno" role="status" hidden></div>
     </section>
@@ -142,7 +172,7 @@
     <div class="janela" role="dialog" aria-modal="true" aria-labelledby="titulo-pausa">
       <div class="icone-grande" aria-hidden="true">⏸️</div>
       <h2 id="titulo-pausa">Jogo pausado</h2>
-      <p>O carrinho está esperando você.</p>
+      <p id="texto-pausa">O carrinho está esperando você.</p>
       <button id="btn-continuar" class="btn grande verde">▶️ Continuar</button>
     </div>
   </div>
@@ -176,6 +206,7 @@
             <button id="prof-apagar-nao" class="btn cinza">Cancelar</button>
           </div>
         </div>
+        <button class="btn azul" data-abrir-acess>♿ Acessibilidade deste computador</button>
         <p id="prof-aviso" class="aviso" role="status"></p>
         <details class="dicas-professor">
           <summary>📘 Para o professor</summary>
@@ -193,11 +224,23 @@
     </div>
   </div>
 
+  <div id="modal-acess" class="modal" hidden>
+    <div class="janela larga" role="dialog" aria-modal="true" aria-labelledby="titulo-acess">
+      <h2 id="titulo-acess">♿ Acessibilidade</h2>
+      <p>Clique para ligar ou desligar. As escolhas ficam salvas neste computador.</p>
+      <div id="lista-acess" class="lista-acess"></div>
+      <button class="btn grande verde" data-fechar>✔️ Pronto</button>
+    </div>
+  </div>
+
   <div id="confete" class="confete" aria-hidden="true"></div>
+  <!-- O que o jogo fala também aparece aqui, para o NVDA e o Narrador lerem -->
+  <div id="fala" class="so-leitor" aria-live="assertive" aria-atomic="true"></div>
 
   <script src="rota/icones.js"></script>
   <script src="rota/fases.js"></script>
   <script src="perguntas.js"></script>
+  <script src="rota/audio.js"></script>
   <script src="rota/jogo.js"></script>
 </body>
 </html>
